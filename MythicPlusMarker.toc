@@ -1,0 +1,9 @@
+## Interface: 90002
+## Title: M+ Marker
+## Author: CruxPhoenix
+## Version: 2020.12.7.1
+##SavedVariablesPerCharacter MPM_Character
+##SavedVariables MPM_Account
+
+Configuration.lua
+Main.lua
