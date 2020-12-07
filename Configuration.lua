@@ -1,8 +1,8 @@
-MMPM_Config = {}
-MMPM_Config.CLEAR = "clear"
-MMPM_Config.PLAYER = "player"
-MMPM_Config.PARTY_PREFIX = "party"
-MMPM_Config.Mark_Definitions = {
+MPM_Config = {}
+MPM_Config.CLEAR = "clear"
+MPM_Config.PLAYER = "player"
+MPM_Config.PARTY_PREFIX = "party"
+MPM_Config.Mark_Definitions = {
 	["star"]=1,
 	["circle"]=2,
 	["diamond"]=3,
@@ -14,7 +14,7 @@ MMPM_Config.Mark_Definitions = {
 	["clear"]=0
 }
 --------------------------------------------------------------------------------------------------------------------------------------------------
-MMPM_Config.Default_Marks = {
+MPM_Config.Default_Marks = {
 	["square"]={["role"]="tank"},
 	["circle"]={["role"]="healer"},
 	["star"]={["class"]="rogue"}
