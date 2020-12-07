@@ -1,0 +1,8 @@
+## Interface: 90002
+## Title: MR M+ Marker
+## Author: CruxPhoenix
+## Version: 2020.12.4.1
+##SavedVariablesPerCharacter MMPM1
+
+Configuration.lua
+Main.lua
