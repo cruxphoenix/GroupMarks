@@ -31,6 +31,10 @@ MPM.SlashCmd = function(txt)
 			print("Running Set Cmd")
 			MPM.AssignMark(cmd2, cmd3, cmd4)
 		end
+	elseif(cmd1 == "check") then
+		MPM.PrintMarks()
+	elseif(cmd1 == "clear") then
+		MPM.ClearAll()
 	else
 		MPM.MarkParty()
 	end
@@ -45,12 +49,38 @@ function cmdToStr(str)
 end
 
 MPM.AssignMark = function(group, value, mark)
-	if(MPM.IsValidMark(mark)) then
+	if(isValidMark(mark)) then
+		if(group == "role" or group == "class" and not(string.match(value, "%d+"))) then
+			value = value .. "1"
+		end
 		MPM_Character.Marks[mark] = {[group]=value}
 	end
 end
 
-MPM.IsValidMark = function (markName)
+MPM.PrintMarks = function()
+	for m,d in pairs(MPM_Character.Marks) do
+		print(m .. ": " .. getMarkGrouping(d) .. "-" .. getMarkValue(d))
+	end
+end
+
+function getMarkGrouping(def) 
+	if(def.role) then
+		return "role"
+	elseif (def.class) then
+		return "class"
+	elseif (def.name) then
+		return "name"
+	else
+		return "<None>"
+	end
+end
+
+function getMarkValue(def)
+	local grouping = getMarkGrouping(def)
+	return def[grouping]
+end
+
+function isValidMark(markName)
 	if(MPM_Config.Mark_Definitions[markName]) then
 		return true
 	else
@@ -58,7 +88,7 @@ MPM.IsValidMark = function (markName)
 	end
 end
 
-MPM.MarkSelector = function (selector)
+MPM.MarkSelector = function (selector, selectorTable)
 	local uRole=cmdToStr(UnitGroupRolesAssigned(selector))
 	local uClass=cmdToStr(UnitClass(selector))
 	local uName=cmdToStr(UnitName(selector))
@@ -67,32 +97,71 @@ MPM.MarkSelector = function (selector)
 		return
 	end
 	
-	local foundOne = false
+	MPM.SetMark(selector, MPM_Config.CLEAR)
+	
+	local c = selectorTable[selector]
 	for k,v in pairs(MPM_Character.Marks) do
-		if((v["role"] and v["role"] == uRole) or (v["class"] and v["class"] == uClass) or (v["name"] and v["name"] == uName)) then
-			foundOne = true
+		if(isMatch(v, c)) then
+			print("Found match for "..selector.." for mark "..k)
 			MPM.SetMark(selector, k)
-			break
+			break;
+		end
+	end
+end
+
+function isMatch(markDef, selectorDef)
+	return (markDef.role and selectorDef.role_n and markDef.role == selectorDef.role_n) or
+			(markDef.class and selectorDef.class_n and markDef.class == selectorDef.class_n) or
+			(markDef.name and selectorDef.name and markDef.name == selectorDef.name)
+end
+
+function buildSelectorTable(allSelectors)
+	local selectorTable = {}
+	for i,s in pairs(allSelectors) do
+		insertSelectorEntry(selectorTable, s)
+	end
+	
+	return selectorTable
+end
+
+function insertSelectorEntry(t,selector)
+	local uRole=cmdToStr(UnitGroupRolesAssigned(selector))
+	local uClass=cmdToStr(UnitClass(selector))
+	local uName=cmdToStr(UnitName(selector))
+	
+	local classCount = 0
+	local roleCount = 0
+	for i,v in pairs(t) do
+		if(t["class"] == uClass) then
+			classCount = classCount + 1
+		end
+		
+		if(t["role"] == uRole) then
+			roleCount = roleCount + 1
 		end
 	end
 	
-	if(not foundOne) then
-		MPM.SetMark(selector, MPM_Config.CLEAR)
-	end
+	t[selector] = {
+		["class"]=uClass,
+		["class_n"]=uClass..(classCount + 1),
+		["role"]=uRole,
+		["role_n"] = uRole..(roleCount + 1),
+		["name"]=uName
+	}
 end
 
 MPM.SetMark = function (selector, markName)
-	if(MPM.IsValidMark(markName)) then
-		SetRaidTarget(selector, MPM.GetMarkId(markName))
+	if(isValidMark(markName)) then
+		SetRaidTarget(selector, getMarkId(markName))
 	end
 end
 
-MPM.GetMarkId = function (str) 
+function getMarkId(str) 
 	if(MPM_Config.Mark_Definitions[str]) then
 		return MPM_Config.Mark_Definitions[str]
 	end
 	
-	return MPM.GetMarkId(MPM_Config.CLEAR)
+	return getMarkId(MPM_Config.CLEAR)
 end
 
 MPM.Reset = function ()
@@ -103,6 +172,7 @@ end
 
 MPM.CoreEventFrame = CreateFrame("Frame")
 MPM.CoreEventFrame:RegisterEvent ("ADDON_LOADED")
+MPM.CoreEventFrame:RegisterEvent ("CHALLENGE_MODE_START")
 
 MPM.CoreEventFrame:SetScript("OnEvent", function(self, event, ...)
 	if (event=="ADDON_LOADED") then
@@ -116,10 +186,34 @@ MPM.CoreEventFrame:SetScript("OnEvent", function(self, event, ...)
 	end
 end)
 
+function getDynamicSelectors()
+	local allSelectors = {}
+	local i = 1
+	for dsd_i, selectorTable in pairs(MPM_Config.Dynamic_Selector_Definitions) do
+		local baseSelector = selectorTable["selector"]
+		if(selectorTable["range_start"]) then
+			for curIndex = selectorTable["range_start"], selectorTable["range_end"] do
+				allSelectors[i] = baseSelector..curIndex
+				i = i + 1
+			end
+		else
+			allSelectors[i] = baseSelector
+			i = i + 1
+		end
+	end
+	
+	return allSelectors
+end
+
+MPM.ClearAll = function()
+	MPM_Character.Marks = {}
+end
+
 MPM.MarkParty = function ()
-	MPM.MarkSelector(MPM_Config.PLAYER)
-	for i =1,4 do
-		MPM.MarkSelector(MPM_Config.PARTY_PREFIX..i)
+	local allSelectors = getDynamicSelectors()
+	local selectorTable = buildSelectorTable(allSelectors)
+	for i,s in pairs(allSelectors) do
+		MPM.MarkSelector(s,selectorTable)
 	end
 end
 
